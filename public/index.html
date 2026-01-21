@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Network + FPS Monitor</title>
+<style>
+body{background:#0b0b0b;color:#0f0;font-family:monospace}
+</style>
+</head>
+<body>
+<h1>📡 Network + FPS Monitor</h1>
+<pre id="o">loading...</pre>
+
+<script>
+/* 擬似ローカルIP */
+function pseudoLocalIP(){
+  let ip = localStorage.getItem("pseudo_ip");
+  if(ip) return ip;
+  ip=`192.168.${Math.floor(Math.random()*256)}.${Math.floor(Math.random()*256)}`;
+  localStorage.setItem("pseudo_ip",ip);
+  return ip;
+}
+const pseudoIP = pseudoLocalIP();
+
+/* FPS測定 */
+let last=performance.now(),frames=0,fps=0,fpsMin=Infinity;
+function fpsLoop(now){
+  frames++;
+  if(now-last>=1000){
+    fps=frames;
+    fpsMin=Math.min(fpsMin,fps);
+    frames=0; last=now;
+  }
+  requestAnimationFrame(fpsLoop);
+}
+requestAnimationFrame(fpsLoop);
+
+function fpsLabel(){
+  if(fps>=55) return "🟢 Smooth";
+  if(fps>=40) return "🟡 OK";
+  return "🔴 Lag";
+}
+
+async function loop(){
+  const [g,p,t,d,s]=await Promise.all([
+    fetch("/api/global-ip").then(r=>r.json()),
+    fetch("/api/ping").then(r=>r.json()),
+    fetch("/api/trace").then(r=>r.json()),
+    fetch("/api/dns").then(r=>r.json()),
+    fetch("/api/score").then(r=>r.json())
+  ]);
+
+  o.textContent=`
+Pseudo Local IP : ${pseudoIP}
+Global IP       : ${g.ip}
+
+--- Network ---
+Ping avg        : ${p.avg?.toFixed(1)} ms
+Ping min/max    : ${p.min} / ${p.max} ms
+Jitter          : ${p.jitter?.toFixed(1)} ms
+Packet loss     : ${p.loss} %
+
+DNS latency     : ${d.latency} ms
+Hop count       : ${t.hop}
+
+Score           : ${s.score}
+Quality         : ${s.label}
+
+--- Performance ---
+FPS             : ${fps}
+Min FPS         : ${fpsMin===Infinity?"-":fpsMin}
+FPS Rating      : ${fpsLabel()}
+
+Time            : ${new Date().toLocaleTimeString()}
+`;
+}
+setInterval(loop,1000);
+loop();
+</script>
+</body>
+</html>
