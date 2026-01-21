@@ -2,6 +2,17 @@ const express = require("express");
 const { exec } = require("child_process");
 const dns = require("dns");
 const app = express();
+const state = {
+  pingAvg: 0,
+  pingMin: 0,
+  pingMax: 0,
+  jitter: 0,
+  packetLoss: 0,
+  dnsLatency: 0,
+  hopCount: "N/A",
+  score: 0
+};
+
 
 app.use(express.static("../public"));
 
